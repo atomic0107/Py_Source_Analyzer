@@ -7,6 +7,9 @@ import os,sys
 import re
 funclist = []
 skip_flag = 0
+path_w ="PySourceAnalyxer_result.txt"
+flow_path_w = "py_flow.md"
+
 def com_skip(line):
     global skip_flag
     line = line[:line.find("#")]
@@ -24,23 +27,76 @@ def fnc_analyze(path):
     file = open(path,"r",encoding="utf-8")
     for line in file:
         cnt += 1
-        line = line[:line.find('/n')]
+        line = line[:line.find('(')]
         line = com_skip(line)
+        line = line.expandtabs()
         if skip_flag == True:
             continue
-        #print(line)
-        #print(line + "\t" + str(cnt))
-        #if (line.find('"') > -1):
-        #    print(line[line.find('"'):] +"\t"+ str(cnt))
-        
-        if(line.find("def ") == 0):
+        if line.find("def ") == 0:
             line = line[4:line.find("(")]
             print(str(cnt) + "\t" + line)
-            funclist
+            funclist.append(line)
     file.close()
+    if len(funclist):
+        print(funclist)
+    else:
+        print("funclist is nothing")
+
+def flowdown(path):
+    #init
+    global flow_path_w
+    cnt = 0
+    det_flag = False
+    call_funclist = []
+    state = 0 
+    print("--------------flowdown-----------------")
+    #file = open(path,"r",encoding = "utf-8")
+    outfile = open(flow_path_w,"w",encoding = "utf-8")
+    outfile.write("```mermaid\n")
+    outfile.write("graph TD\n\n")
+    outfile.write("S(start)")
+
+    for i in range(len(funclist)):
+        print(funclist[i])
+        file = open(path,"r",encoding = "utf-8")
+        cnt = 0
+        state = 0
+        for line in file:
+            cnt += 1
+            #line = line[:line.find("/n")]
+            line = com_skip(line)
+            line = line.replace('"',"'")
+            if state == 0:
+                if line.find("def " + funclist[i]) > -1 :
+                    state = 1
+            elif state == 1:
+                if (line.find("def ") == 0):
+                    continue
+                elif(line.find("for") > -1):
+                    state = 2
+                    continue
+                elif(line.find("if") > -1):
+                    state = 2
+                    continue
+                else:
+
+                    line = line[line.rfind("    ")+4:]
+                    if(len(line) < 2 ):
+                        continue
+                    print(str(cnt)+" "+line)
+                    outfile.write("-->"+str(cnt)+'["'+str(cnt)+" "+line+'"]'+"\n") 
+                    outfile.write(str(cnt))
+            elif state == 2:
+                if(line.find("def ")==0):
+                    state = 3
+                    break
+    outfile.write("-->END[end]\n")
+    outfile.write("```")
+    outfile.close()
 
 def analyze(path):
     fnc_analyze(path)
+    flowdown(path)
 
 def main():
     print(os.getcwd())
